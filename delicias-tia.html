@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Delicias de la Tía · Gestión</title>
+<meta name="description" content="Gestión de ventas, inventario y caja para Delicias de la Tía">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#8B3A3A">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Delicias Tía">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Karla:ital,wght@0,400;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --crema:#FFF8F0;
+    --crema-2:#FBEAD9;
+    --vino:#8B3A3A;
+    --vino-dark:#6E2C2C;
+    --mostaza:#D4A24C;
+    --oliva:#6B7A3A;
+    --oliva-2:#E6EAD3;
+    --terracota:#C1592C;
+    --cafe:#3A2A1E;
+    --cafe-soft:#8A7160;
+    --white:#FFFFFF;
+    --shadow: 0 6px 18px rgba(58,42,30,.12);
+    --shadow-lg: 0 14px 34px rgba(58,42,30,.20);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Karla',sans-serif;
+    background:var(--crema);
+    color:var(--cafe);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    color:var(--cafe);
+    margin:0;
+  }
+  ::selection{background:var(--mostaza);}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  input,select{font-family:inherit;}
+
+  /* doily / scalloped edge signature */
+  .doily-edge{
+    height:12px;
+    background-image: radial-gradient(circle at 8px 0, transparent 8px, var(--vino) 8.5px);
+    background-size: 16px 12px;
+    background-repeat: repeat-x;
+  }
+  .doily-edge.alt{
+    background-image: radial-gradient(circle at 8px 0, transparent 8px, var(--crema) 8.5px);
+  }
+
+  /* ---------- SPLASH ---------- */
+  #splash{
+    position:fixed;inset:0;
+    background:linear-gradient(160deg,var(--vino) 0%, var(--vino-dark) 100%);
+    display:flex;align-items:center;justify-content:center;
+    z-index:999;color:white;text-align:center;
+    transition:opacity .5s ease;
+  }
+  #splash svg{width:110px;height:110px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.25));}
+  #splash h1{color:white;font-size:1.9rem;margin-top:14px;letter-spacing:.3px;}
+  #splash p{opacity:.85;margin-top:4px;font-weight:700;font-family:'Karla';}
+
+  /* ---------- APP SHELL ---------- */
+  #app{display:none;min-height:100vh;padding-bottom:78px;}
+  header.topbar{
+    background:var(--vino);color:white;padding:16px 18px 20px;
+    position:sticky;top:0;z-index:40;
+  }
+  header.topbar .row{display:flex;align-items:center;gap:10px;}
+  header.topbar .logo{
+    width:38px;height:38px;border-radius:50%;background:var(--mostaza);
+    display:flex;align-items:center;justify-content:center;font-family:'Fraunces';font-weight:700;color:var(--vino-dark);flex-shrink:0;overflow:hidden;
+  }
+  header.topbar .logo img{width:100%;height:100%;object-fit:cover;}
+  header.topbar .brand-name{font-family:'Fraunces';font-weight:700;font-size:1.15rem;color:white;}
+  header.topbar .brand-sub{font-size:.72rem;opacity:.85;font-weight:600;}
+
+  main{padding:16px;max-width:560px;margin:0 auto;}
+  section.tab{display:none;}
+  section.tab.active{display:block;}
+
+  /* tabbar */
+  nav.tabbar{
+    position:fixed;bottom:0;left:0;right:0;background:white;
+    display:flex;justify-content:space-around;padding:8px 6px 10px;
+    box-shadow:0 -4px 16px rgba(58,42,30,.10);z-index:50;
+  }
+  nav.tabbar button{
+    background:none;display:flex;flex-direction:column;align-items:center;
+    gap:2px;padding:8px 4px;border-radius:14px;color:var(--cafe-soft);font-size:.66rem;font-weight:800;flex:1;
+  }
+  nav.tabbar button svg{width:22px;height:22px;}
+  nav.tabbar button.active{color:var(--vino);background:var(--crema-2);}
+
+  /* cat chips */
+  .cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:6px;}
+  .cat-chip{white-space:nowrap;background:white;padding:8px 16px;border-radius:20px;font-weight:800;font-size:.82rem;color:var(--cafe-soft);box-shadow:var(--shadow);}
+  .cat-chip.active{background:var(--vino);color:white;}
+
+  /* product grid */
+  .prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .prod-card{background:white;border-radius:18px;padding:14px;box-shadow:var(--shadow);position:relative;}
+  .prod-card .pname{font-weight:800;font-size:.92rem;line-height:1.2;}
+  .prod-card .pcat{font-size:.68rem;color:var(--cafe-soft);font-weight:700;margin-top:2px;}
+  .prod-card .pprice{font-weight:800;color:var(--vino);font-size:1rem;margin-top:8px;}
+  .prod-card .stockflag{position:absolute;top:10px;right:10px;font-size:.6rem;font-weight:800;background:var(--terracota);color:white;padding:3px 8px;border-radius:10px;}
+  .prod-card button.add{width:100%;margin-top:10px;background:var(--crema-2);color:var(--vino);font-weight:800;padding:8px;border-radius:12px;font-size:.82rem;}
+  .prod-card button.add:active{background:var(--vino);color:white;}
+
+  .fab{
+    position:fixed;bottom:92px;right:18px;background:var(--vino);color:white;
+    width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow-lg);z-index:45;font-size:1.4rem;
+  }
+  .fab .count{position:absolute;top:-4px;right:-4px;background:var(--mostaza);color:var(--vino-dark);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;}
+
+  /* modal / sheet */
+  .sheet-backdrop{position:fixed;inset:0;background:rgba(58,42,30,.4);z-index:80;display:none;}
+  .sheet-backdrop.show{display:block;}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;background:var(--crema);
+    border-radius:26px 26px 0 0;z-index:90;max-height:88vh;overflow-y:auto;
+    transform:translateY(100%);transition:transform .28s ease;padding:20px 18px 26px;
+  }
+  .sheet.show{transform:translateY(0);}
+  .sheet h2{font-size:1.2rem;margin-bottom:14px;}
+  .sheet-close{position:absolute;top:14px;right:16px;font-size:1.3rem;color:var(--cafe-soft);background:none;}
+
+  .cart-row{display:flex;align-items:center;justify-content:space-between;background:white;border-radius:14px;padding:10px 12px;margin-bottom:8px;}
+  .cart-row .ci-name{font-weight:800;font-size:.88rem;}
+  .cart-row .ci-price{font-size:.76rem;color:var(--cafe-soft);}
+  .qty-ctrl{display:flex;align-items:center;gap:8px;}
+  .qty-ctrl button{width:26px;height:26px;border-radius:8px;background:var(--crema-2);color:var(--vino);font-weight:800;flex-shrink:0;}
+  .qty-ctrl .qty-input{
+    width:40px;text-align:center;border:2px solid var(--crema-2);border-radius:8px;
+    font-weight:800;color:var(--cafe);padding:4px 2px;font-size:.9rem;-moz-appearance:textfield;
+  }
+  .qty-ctrl .qty-input::-webkit-outer-spin-button, .qty-ctrl .qty-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .qty-ctrl .qty-input:focus{outline:none;border-color:var(--vino);}
+
+  .btn{padding:13px 18px;border-radius:14px;font-weight:800;font-size:.92rem;width:100%;text-align:center;display:block;}
+  .btn-primary{background:var(--vino);color:white;box-shadow:0 6px 14px rgba(139,58,58,.35);}
+  .btn-secondary{background:var(--crema-2);color:var(--cafe);}
+  .btn-danger{background:var(--terracota);color:white;}
+  .btn-outline{background:white;border:2px solid var(--vino);color:var(--vino);}
+  .btn-row{display:flex;gap:10px;margin-top:14px;}
+  .btn-row .btn{flex:1;}
+
+  .empty-state{text-align:center;padding:40px 20px;color:var(--cafe-soft);}
+  .empty-state svg{width:56px;height:56px;margin-bottom:10px;opacity:.5;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:.78rem;font-weight:800;color:var(--cafe-soft);margin-bottom:5px;}
+  .field input, .field select{
+    width:100%;padding:12px 14px;border-radius:12px;border:2px solid var(--crema-2);background:white;
+    font-weight:700;color:var(--cafe);font-size:.92rem;
+  }
+  .field input:focus, .field select:focus{outline:none;border-color:var(--vino);}
+
+  .recipe-item{display:flex;align-items:center;gap:8px;background:white;border-radius:12px;padding:8px 10px;margin-bottom:8px;}
+  .recipe-item select, .recipe-item input{flex:1;padding:8px 10px;border-radius:8px;border:2px solid var(--crema-2);font-weight:700;}
+  .recipe-item button{background:var(--terracota);color:white;width:30px;height:30px;border-radius:50%;flex-shrink:0;}
+
+  .list-item{background:white;border-radius:16px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .li-name{font-weight:800;font-size:.9rem;}
+  .li-sub{font-size:.74rem;color:var(--cafe-soft);font-weight:700;}
+  .tag-alert{background:var(--terracota);color:white;font-size:.63rem;font-weight:800;padding:3px 8px;border-radius:10px;margin-left:6px;}
+  .tag-ok{background:var(--oliva-2);color:var(--oliva);font-size:.63rem;font-weight:800;padding:3px 8px;border-radius:10px;margin-left:6px;}
+  .stock-bar-wrap{background:var(--crema-2);border-radius:6px;height:6px;width:100%;margin-top:6px;overflow:hidden;}
+  .stock-bar{height:100%;border-radius:6px;}
+
+  .fab-add{
+    position:fixed;bottom:92px;right:18px;width:56px;height:56px;border-radius:50%;
+    background:var(--vino);color:white;font-size:1.6rem;box-shadow:var(--shadow-lg);z-index:45;
+  }
+
+  .toast{
+    position:fixed;left:50%;bottom:100px;transform:translateX(-50%);
+    background:var(--cafe);color:white;padding:12px 20px;border-radius:16px;font-weight:700;
+    z-index:200;opacity:0;transition:opacity .25s ease;font-size:.86rem;pointer-events:none;box-shadow:var(--shadow-lg);
+  }
+  .toast.show{opacity:1;}
+
+  .kpi-row{display:flex;gap:10px;margin-bottom:16px;}
+  .kpi{flex:1;background:white;border-radius:16px;padding:14px;box-shadow:var(--shadow);}
+  .kpi .kpi-label{font-size:.7rem;font-weight:800;color:var(--cafe-soft);}
+  .kpi .kpi-val{font-family:'Fraunces';font-size:1.25rem;color:var(--cafe);margin-top:2px;}
+  .kpi.saldo{background:var(--vino);}
+  .kpi.saldo .kpi-label{color:rgba(255,255,255,.75);}
+  .kpi.saldo .kpi-val{color:white;}
+
+  .mov-row{background:white;border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+  .mov-row .mv-concepto{font-weight:800;font-size:.86rem;}
+  .mov-row .mv-fecha{font-size:.7rem;color:var(--cafe-soft);font-weight:700;}
+  .mov-row .mv-monto{font-weight:800;font-size:.94rem;}
+
+  .segmented{display:flex;background:var(--crema-2);border-radius:14px;padding:4px;margin-bottom:16px;}
+  .segmented button{flex:1;padding:9px;border-radius:11px;font-weight:800;font-size:.82rem;color:var(--cafe-soft);}
+  .segmented button.active{background:var(--vino);color:white;}
+
+  h3.section-title{font-family:'Fraunces';font-size:1.05rem;margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div>
+    <img src="icons/icon-192.png" alt="Delicias de la Tía" style="width:150px;height:150px;border-radius:28px;box-shadow:0 8px 20px rgba(0,0,0,.25);">
+    <h1 id="splashName">Delicias de la Tía</h1>
+    <p>Cargando…</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="topbar">
+    <div class="row">
+      <div class="logo" id="logoBox">DT</div>
+      <div>
+        <div class="brand-name" id="brandName">Delicias de la Tía</div>
+        <div class="brand-sub">Deditos, refrigerios y más</div>
+      </div>
+    </div>
+  </header>
+  <div class="doily-edge"></div>
+
+  <main>
+    <!-- POS -->
+    <section class="tab active" id="tab-pos">
+      <div class="cat-scroll" id="catScroll"></div>
+      <div class="prod-grid" id="prodGrid"></div>
+    </section>
+
+    <!-- INVENTARIO -->
+    <section class="tab" id="tab-inv">
+      <div class="segmented">
+        <button data-inv="insumos" class="active">Insumos</button>
+        <button data-inv="productos">Productos</button>
+      </div>
+      <div id="invInsumos"></div>
+      <div id="invProductos" style="display:none;"></div>
+    </section>
+
+    <!-- CAJA (contabilidad simple) -->
+    <section class="tab" id="tab-caja">
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">ENTRADAS</div><div class="kpi-val" id="kpiEntradas">$0</div></div>
+        <div class="kpi"><div class="kpi-label">SALIDAS</div><div class="kpi-val" id="kpiSalidas">$0</div></div>
+      </div>
+      <div class="kpi saldo" style="margin-bottom:16px;">
+        <div class="kpi-label">SALDO ACTUAL</div>
+        <div class="kpi-val" id="kpiSaldo" style="font-size:1.6rem;">$0</div>
+      </div>
+      <h3 class="section-title">Movimientos</h3>
+      <div id="movList"></div>
+    </section>
+
+    <!-- CONFIG -->
+    <section class="tab" id="tab-cfg">
+      <div id="installBox" style="display:none;background:var(--vino);border-radius:16px;padding:16px;margin-bottom:20px;color:white;">
+        <div style="font-family:'Fraunces';font-weight:700;font-size:1rem;margin-bottom:4px;">Instala la app en tu celular</div>
+        <p style="font-size:.8rem;opacity:.9;margin:0 0 12px;">Úsala como una app normal, con ícono en tu pantalla de inicio y sin necesidad de abrir el navegador.</p>
+        <button class="btn" style="background:white;color:var(--vino);" id="btnInstalar">Instalar ahora</button>
+      </div>
+      <h3 class="section-title">Negocio</h3>
+      <div class="field"><label>Nombre del negocio</label><input id="cfgNombre" placeholder="Ej: Delicias de la Tía"></div>
+      <div class="field"><label>Logo (imagen)</label><input id="cfgLogo" type="file" accept="image/*"></div>
+      <div class="field"><label>WhatsApp para recibos/reportes</label><input id="cfgWhatsapp" placeholder="Ej: 3001234567"></div>
+      <button class="btn btn-primary" id="btnGuardarCfg">Guardar cambios</button>
+
+      <h3 class="section-title" style="margin-top:26px;">Respaldo</h3>
+      <p style="font-size:.82rem;color:var(--cafe-soft);margin:0 0 12px;">Guarda una copia de toda la información (productos, inventario, movimientos) o restaura desde un archivo.</p>
+      <div class="btn-row">
+        <button class="btn btn-outline" id="btnBackup">Descargar copia</button>
+        <button class="btn btn-outline" id="btnRestoreTrigger">Restaurar</button>
+      </div>
+      <input type="file" id="cfgRestoreFile" accept=".json" style="display:none;">
+
+      <h3 class="section-title" style="margin-top:26px;">Reportes</h3>
+      <button class="btn btn-secondary" id="btnReporteInv">Enviar reporte de inventario por WhatsApp</button>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button data-tab="pos" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+      Vender
+    </button>
+    <button data-tab="inv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8V21H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+      Inventario
+    </button>
+    <button data-tab="caja">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+      Caja
+    </button>
+    <button data-tab="cfg">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Config
+    </button>
+  </nav>
+
+  <!-- FAB carrito -->
+  <button class="fab" id="fabCart" style="display:none;">
+    🛒<span class="count" id="cartCount">0</span>
+  </button>
+</div>
+
+<!-- SHEET: carrito -->
+<div class="sheet-backdrop" id="backdropCart"></div>
+<div class="sheet" id="sheetCart">
+  <button class="sheet-close" data-close="sheetCart">✕</button>
+  <h2>Tu pedido</h2>
+  <div id="cartItems"></div>
+  <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1.1rem;margin:14px 0;">
+    <span>Total</span><span id="cartTotal">$0</span>
+  </div>
+  <button class="btn btn-primary" id="btnCheckout">Cobrar</button>
+</div>
+
+<!-- SHEET: recibo -->
+<div class="sheet-backdrop" id="backdropRecibo"></div>
+<div class="sheet" id="sheetRecibo">
+  <button class="sheet-close" data-close="sheetRecibo">✕</button>
+  <h2>Venta registrada ✅</h2>
+  <div id="reciboBox" style="background:white;border-radius:14px;padding:14px;font-size:.86rem;"></div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="btnCerrarRecibo">Cerrar</button>
+    <button class="btn btn-primary" id="btnWhatsappRecibo">Enviar por WhatsApp</button>
+  </div>
+</div>
+
+<!-- SHEET: insumo -->
+<div class="sheet-backdrop" id="backdropInsumo"></div>
+<div class="sheet" id="sheetInsumo">
+  <button class="sheet-close" data-close="sheetInsumo">✕</button>
+  <h2 id="insumoTitulo">Nuevo insumo</h2>
+  <input type="hidden" id="insumoId">
+  <div class="field"><label>Nombre</label><input id="insumoNombre" placeholder="Ej: Harina de trigo"></div>
+  <div class="field"><label>Unidad</label><input id="insumoUnidad" placeholder="Ej: kg, unidad, paquete"></div>
+  <div class="field"><label>Stock actual</label><input id="insumoStock" type="number" step="0.01" placeholder="0"></div>
+  <div class="field"><label>Stock mínimo (alerta)</label><input id="insumoMinimo" type="number" step="0.01" placeholder="0"></div>
+  <div class="btn-row">
+    <button class="btn btn-danger" id="btnEliminarInsumo" style="display:none;">Eliminar</button>
+    <button class="btn btn-primary" id="btnGuardarInsumo">Guardar</button>
+  </div>
+</div>
+
+<!-- SHEET: producto -->
+<div class="sheet-backdrop" id="backdropProducto"></div>
+<div class="sheet" id="sheetProducto">
+  <button class="sheet-close" data-close="sheetProducto">✕</button>
+  <h2 id="productoTitulo">Nuevo producto</h2>
+  <input type="hidden" id="prodId">
+  <div class="field"><label>Nombre</label><input id="prodNombre" placeholder="Ej: Deditos de queso"></div>
+  <div class="field">
+    <label>Categoría</label>
+    <input id="prodCategoria" placeholder="Ej: Deditos, Refrigerios, Bebidas" list="catList">
+    <datalist id="catList"></datalist>
+  </div>
+  <div class="field"><label>Precio de venta</label><input id="prodPrecio" type="number" step="100" placeholder="0"></div>
+  <label style="display:block;font-size:.78rem;font-weight:800;color:var(--cafe-soft);margin-bottom:6px;">Receta (insumos que consume por unidad vendida)</label>
+  <div id="recetaList"></div>
+  <button class="btn btn-secondary" id="btnAgregarInsumoReceta" style="margin-bottom:14px;">+ Agregar insumo a la receta</button>
+  <div class="btn-row">
+    <button class="btn btn-danger" id="btnEliminarProducto" style="display:none;">Eliminar</button>
+    <button class="btn btn-primary" id="btnGuardarProducto">Guardar</button>
+  </div>
+</div>
+
+<!-- SHEET: movimiento manual -->
+<div class="sheet-backdrop" id="backdropMov"></div>
+<div class="sheet" id="sheetMov">
+  <button class="sheet-close" data-close="sheetMov">✕</button>
+  <h2 id="movTitulo">Nuevo movimiento</h2>
+  <div class="segmented">
+    <button data-movtipo="entrada" class="active">Entrada</button>
+    <button data-movtipo="salida">Salida</button>
+  </div>
+  <div class="field"><label>Concepto</label><input id="movConcepto" placeholder="Ej: Compra de insumos"></div>
+  <div class="field"><label>Monto</label><input id="movMonto" type="number" step="100" placeholder="0"></div>
+  <button class="btn btn-primary" id="btnGuardarMov">Guardar</button>
+</div>
+
+<button class="fab-add" id="fabAdd" style="display:none;">+</button>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DB_KEY = 'delicias_tia_db_v1';
+let DB = JSON.parse(localStorage.getItem(DB_KEY) || 'null') || {
+  config:{ nombre:'Delicias de la Tía', logo:'icons/icon-192.png', whatsapp:'' },
+  insumos:[],
+  productos:[],
+  movimientos:[]
+};
+
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function money(n){ return '$'+Math.round(n).toLocaleString('es-CO'); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function openSheet(id){
+  document.getElementById(id).classList.add('show');
+  document.getElementById('backdrop'+id.replace('sheet','')).classList.add('show');
+}
+function closeSheet(id){
+  document.getElementById(id).classList.remove('show');
+  document.getElementById('backdrop'+id.replace('sheet','')).classList.remove('show');
+}
+document.querySelectorAll('[data-close]').forEach(b=>{
+  b.addEventListener('click', ()=>closeSheet(b.dataset.close));
+});
+document.querySelectorAll('.sheet-backdrop').forEach(bd=>{
+  bd.addEventListener('click', ()=>{
+    document.querySelectorAll('.sheet.show').forEach(s=>closeSheet(s.id));
+  });
+});
+
+/* ---------- SPLASH / boot ---------- */
+document.getElementById('splashName').textContent = DB.config.nombre || 'Delicias de la Tía';
+setTimeout(()=>{
+  document.getElementById('splash').style.opacity = '0';
+  setTimeout(()=>{
+    document.getElementById('splash').style.display='none';
+    document.getElementById('app').style.display='block';
+  }, 500);
+  renderAll();
+}, 900);
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('nav.tabbar button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('section.tab').forEach(s=>s.classList.remove('active'));
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    document.getElementById('fabCart').style.display = btn.dataset.tab==='pos' && cart.length ? 'flex':'none';
+    document.getElementById('fabAdd').style.display = (btn.dataset.tab==='inv') ? 'flex':'none';
+    if(btn.dataset.tab==='inv') renderInventario();
+    if(btn.dataset.tab==='caja') renderCaja();
+  });
+});
+
+/* ---------- CONFIG ---------- */
+function renderConfig(){
+  document.getElementById('cfgNombre').value = DB.config.nombre || '';
+  document.getElementById('cfgWhatsapp').value = DB.config.whatsapp || '';
+  document.getElementById('brandName').textContent = DB.config.nombre || 'Delicias de la Tía';
+  const logoBox = document.getElementById('logoBox');
+  logoBox.innerHTML = DB.config.logo ? `<img src="${DB.config.logo}">` : (DB.config.nombre||'DT').slice(0,2).toUpperCase();
+}
+document.getElementById('cfgLogo').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ DB.config.logo = reader.result; saveDB(); renderConfig(); };
+  reader.readAsDataURL(f);
+});
+document.getElementById('btnGuardarCfg').addEventListener('click', ()=>{
+  DB.config.nombre = document.getElementById('cfgNombre').value.trim() || 'Delicias de la Tía';
+  DB.config.whatsapp = document.getElementById('cfgWhatsapp').value.trim();
+  saveDB(); renderConfig(); renderPOS();
+  showToast('Cambios guardados');
+});
+document.getElementById('btnBackup').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `backup_${(DB.config.nombre||'delicias_tia').replace(/\s+/g,'_')}_${todayStr()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+});
+document.getElementById('btnRestoreTrigger').addEventListener('click', ()=>{
+  document.getElementById('cfgRestoreFile').click();
+});
+document.getElementById('cfgRestoreFile').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      DB = JSON.parse(reader.result);
+      saveDB(); renderAll();
+      showToast('Datos restaurados');
+    }catch(err){ showToast('Archivo inválido'); }
+  };
+  reader.readAsText(f);
+});
+
+/* ---------- INVENTARIO: INSUMOS ---------- */
+document.querySelectorAll('[data-inv]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('[data-inv]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('invInsumos').style.display = btn.dataset.inv==='insumos'?'block':'none';
+    document.getElementById('invProductos').style.display = btn.dataset.inv==='productos'?'block':'none';
+    currentInvTab = btn.dataset.inv;
+  });
+});
+let currentInvTab = 'insumos';
+
+function renderInventario(){
+  const box = document.getElementById('invInsumos');
+  if(!DB.insumos.length){
+    box.innerHTML = `<div class="empty-state"><div>📦</div>Aún no tienes insumos registrados.<br>Toca + para agregar el primero.</div>`;
+  } else {
+    box.innerHTML = DB.insumos.map(i=>{
+      const bajo = i.stockMinimo>0 && i.stock <= i.stockMinimo;
+      const pct = i.stockMinimo>0 ? Math.min(100, (i.stock/(i.stockMinimo*2))*100) : 100;
+      return `<div class="list-item" style="display:block;" data-insumo="${i.id}">
+        <div style="display:flex;justify-content:space-between;">
+          <div>
+            <div class="li-name">${i.nombre}${bajo?'<span class="tag-alert">Bajo</span>':''}</div>
+            <div class="li-sub">${i.stock} ${i.unidad} disponibles</div>
+          </div>
+        </div>
+        <div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${bajo?'var(--terracota)':'var(--oliva)'}"></div></div>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('[data-insumo]').forEach(el=>{
+      el.addEventListener('click', ()=>openInsumo(el.dataset.insumo));
+    });
+  }
+
+  const box2 = document.getElementById('invProductos');
+  if(!DB.productos.length){
+    box2.innerHTML = `<div class="empty-state"><div>🍽️</div>Aún no tienes productos.<br>Toca + para crear el primero.</div>`;
+  } else {
+    box2.innerHTML = DB.productos.map(p=>`<div class="list-item" data-prod="${p.id}">
+      <div>
+        <div class="li-name">${p.nombre}</div>
+        <div class="li-sub">${p.categoria||'Sin categoría'} · ${money(p.precio)}</div>
+      </div>
+    </div>`).join('');
+    box2.querySelectorAll('[data-prod]').forEach(el=>{
+      el.addEventListener('click', ()=>openProducto(el.dataset.prod));
+    });
+  }
+}
+
+document.getElementById('fabAdd').addEventListener('click', ()=>{
+  if(currentInvTab==='insumos') openInsumo(null);
+  else openProducto(null);
+});
+
+function openInsumo(id){
+  const i = DB.insumos.find(x=>x.id===id);
+  document.getElementById('insumoTitulo').textContent = i? 'Editar insumo':'Nuevo insumo';
+  document.getElementById('insumoId').value = id||'';
+  document.getElementById('insumoNombre').value = i?i.nombre:'';
+  document.getElementById('insumoUnidad').value = i?i.unidad:'';
+  document.getElementById('insumoStock').value = i?i.stock:'';
+  document.getElementById('insumoMinimo').value = i?i.stockMinimo:'';
+  document.getElementById('btnEliminarInsumo').style.display = i?'block':'none';
+  openSheet('sheetInsumo');
+}
+document.getElementById('btnGuardarInsumo').addEventListener('click', ()=>{
+  const id = document.getElementById('insumoId').value;
+  const nombre = document.getElementById('insumoNombre').value.trim();
+  if(!nombre){ showToast('Ponle un nombre al insumo'); return; }
+  const data = {
+    nombre,
+    unidad: document.getElementById('insumoUnidad').value.trim()||'unidad',
+    stock: parseFloat(document.getElementById('insumoStock').value)||0,
+    stockMinimo: parseFloat(document.getElementById('insumoMinimo').value)||0,
+  };
+  if(id){
+    Object.assign(DB.insumos.find(x=>x.id===id), data);
+  } else {
+    DB.insumos.push({id:uid(), ...data});
+  }
+  saveDB(); closeSheet('sheetInsumo'); renderInventario();
+  showToast('Insumo guardado');
+});
+document.getElementById('btnEliminarInsumo').addEventListener('click', ()=>{
+  const id = document.getElementById('insumoId').value;
+  DB.insumos = DB.insumos.filter(x=>x.id!==id);
+  DB.productos.forEach(p=>{ p.receta = p.receta.filter(r=>r.insumoId!==id); });
+  saveDB(); closeSheet('sheetInsumo'); renderInventario();
+  showToast('Insumo eliminado');
+});
+
+/* ---------- INVENTARIO: PRODUCTOS ---------- */
+let recetaTemp = [];
+function refreshCatList(){
+  const cats = [...new Set(DB.productos.map(p=>p.categoria).filter(Boolean))];
+  document.getElementById('catList').innerHTML = cats.map(c=>`<option value="${c}">`).join('');
+}
+function openProducto(id){
+  const p = DB.productos.find(x=>x.id===id);
+  document.getElementById('productoTitulo').textContent = p? 'Editar producto':'Nuevo producto';
+  document.getElementById('prodId').value = id||'';
+  document.getElementById('prodNombre').value = p?p.nombre:'';
+  document.getElementById('prodCategoria').value = p?p.categoria:'';
+  document.getElementById('prodPrecio').value = p?p.precio:'';
+  recetaTemp = p? JSON.parse(JSON.stringify(p.receta||[])) : [];
+  document.getElementById('btnEliminarProducto').style.display = p?'block':'none';
+  refreshCatList();
+  renderReceta();
+  openSheet('sheetProducto');
+}
+function renderReceta(){
+  const box = document.getElementById('recetaList');
+  if(!recetaTemp.length){ box.innerHTML=''; return; }
+  box.innerHTML = recetaTemp.map((r,idx)=>`
+    <div class="recipe-item">
+      <select data-ridx="${idx}" class="rsel">
+        ${DB.insumos.map(i=>`<option value="${i.id}" ${i.id===r.insumoId?'selected':''}>${i.nombre}</option>`).join('')}
+      </select>
+      <input type="number" step="0.01" data-ridx="${idx}" class="rcant" value="${r.cantidad}" placeholder="Cant.">
+      <button data-ridx="${idx}" class="rdel">✕</button>
+    </div>`).join('');
+  box.querySelectorAll('.rsel').forEach(s=>s.addEventListener('change', e=>{
+    recetaTemp[e.target.dataset.ridx].insumoId = e.target.value;
+  }));
+  box.querySelectorAll('.rcant').forEach(s=>s.addEventListener('input', e=>{
+    recetaTemp[e.target.dataset.ridx].cantidad = parseFloat(e.target.value)||0;
+  }));
+  box.querySelectorAll('.rdel').forEach(s=>s.addEventListener('click', e=>{
+    recetaTemp.splice(e.target.dataset.ridx,1); renderReceta();
+  }));
+}
+document.getElementById('btnAgregarInsumoReceta').addEventListener('click', ()=>{
+  if(!DB.insumos.length){ showToast('Registra insumos primero en Inventario'); return; }
+  recetaTemp.push({insumoId: DB.insumos[0].id, cantidad:1});
+  renderReceta();
+});
+document.getElementById('btnGuardarProducto').addEventListener('click', ()=>{
+  const id = document.getElementById('prodId').value;
+  const nombre = document.getElementById('prodNombre').value.trim();
+  if(!nombre){ showToast('Ponle un nombre al producto'); return; }
+  const data = {
+    nombre,
+    categoria: document.getElementById('prodCategoria').value.trim()||'General',
+    precio: parseFloat(document.getElementById('prodPrecio').value)||0,
+    receta: JSON.parse(JSON.stringify(recetaTemp)),
+  };
+  if(id){ Object.assign(DB.productos.find(x=>x.id===id), data); }
+  else { DB.productos.push({id:uid(), ...data}); }
+  saveDB(); closeSheet('sheetProducto'); renderInventario(); renderPOS();
+  showToast('Producto guardado');
+});
+document.getElementById('btnEliminarProducto').addEventListener('click', ()=>{
+  const id = document.getElementById('prodId').value;
+  DB.productos = DB.productos.filter(x=>x.id!==id);
+  saveDB(); closeSheet('sheetProducto'); renderInventario(); renderPOS();
+  showToast('Producto eliminado');
+});
+
+/* ---------- POS ---------- */
+let cart = [];
+let catActiva = 'Todas';
+function renderPOS(){
+  const cats = ['Todas', ...new Set(DB.productos.map(p=>p.categoria).filter(Boolean))];
+  document.getElementById('catScroll').innerHTML = cats.map(c=>
+    `<button class="cat-chip ${c===catActiva?'active':''}" data-cat="${c}">${c}</button>`).join('');
+  document.querySelectorAll('.cat-chip').forEach(b=>{
+    b.addEventListener('click', ()=>{ catActiva = b.dataset.cat; renderPOS(); });
+  });
+  const list = DB.productos.filter(p=> catActiva==='Todas' || p.categoria===catActiva);
+  const grid = document.getElementById('prodGrid');
+  if(!list.length){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div>🍢</div>Aún no hay productos.<br>Agrégalos desde Inventario.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(p=>{
+    const sinStock = p.receta && p.receta.some(r=>{
+      const ins = DB.insumos.find(i=>i.id===r.insumoId);
+      return ins && ins.stock < r.cantidad;
+    });
+    return `<div class="prod-card">
+      ${sinStock?'<div class="stockflag">Sin insumos</div>':''}
+      <div class="pname">${p.nombre}</div>
+      <div class="pcat">${p.categoria}</div>
+      <div class="pprice">${money(p.precio)}</div>
+      <button class="add" data-add="${p.id}" ${sinStock?'disabled style="opacity:.5;"':''}>Agregar</button>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('[data-add]').forEach(b=>{
+    b.addEventListener('click', ()=>addToCart(b.dataset.add));
+  });
+}
+function addToCart(id){
+  const p = DB.productos.find(x=>x.id===id);
+  const existing = cart.find(c=>c.id===id);
+  if(existing) existing.qty++;
+  else cart.push({id, nombre:p.nombre, precio:p.precio, qty:1});
+  updateCartUI();
+  showToast(`${p.nombre} agregado`);
+}
+function updateCartUI(){
+  const totalQty = cart.reduce((a,c)=>a+c.qty,0);
+  document.getElementById('cartCount').textContent = totalQty;
+  document.getElementById('fabCart').style.display = totalQty? 'flex':'none';
+  document.getElementById('cartItems').innerHTML = cart.map((c,idx)=>`
+    <div class="cart-row">
+      <div>
+        <div class="ci-name">${c.nombre}</div>
+        <div class="ci-price">${money(c.precio)} c/u</div>
+      </div>
+      <div class="qty-ctrl">
+        <button data-dec="${idx}">−</button>
+        <input type="number" inputmode="numeric" min="1" class="qty-input" data-qty="${idx}" value="${c.qty}">
+        <button data-inc="${idx}">+</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('cartTotal').textContent = money(cart.reduce((a,c)=>a+c.qty*c.precio,0));
+  document.querySelectorAll('[data-inc]').forEach(b=>b.addEventListener('click', ()=>{ cart[b.dataset.inc].qty++; updateCartUI(); }));
+  document.querySelectorAll('[data-qty]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const idx = inp.dataset.qty;
+      let val = parseInt(inp.value);
+      if(!val || val<1) val = 1;
+      cart[idx].qty = val;
+      updateCartUI();
+    });
+    inp.addEventListener('focus', ()=>inp.select());
+  });
+  document.querySelectorAll('[data-dec]').forEach(b=>b.addEventListener('click', ()=>{
+    const idx = b.dataset.dec;
+    cart[idx].qty--;
+    if(cart[idx].qty<=0) cart.splice(idx,1);
+    updateCartUI();
+  }));
+}
+document.getElementById('fabCart').addEventListener('click', ()=>openSheet('sheetCart'));
+
+document.getElementById('btnCheckout').addEventListener('click', ()=>{
+  if(!cart.length) return;
+  // descontar insumos
+  cart.forEach(ci=>{
+    const p = DB.productos.find(x=>x.id===ci.id);
+    (p.receta||[]).forEach(r=>{
+      const ins = DB.insumos.find(i=>i.id===r.insumoId);
+      if(ins) ins.stock = Math.max(0, ins.stock - r.cantidad*ci.qty);
+    });
+  });
+  const total = cart.reduce((a,c)=>a+c.qty*c.precio,0);
+  const fecha = new Date();
+  const venta = { id:uid(), fecha:fecha.toISOString(), items:JSON.parse(JSON.stringify(cart)), total };
+  DB.movimientos.push({
+    id:uid(), tipo:'entrada', concepto:'Venta POS', monto:total,
+    fecha:fecha.toISOString(), origen:'venta', ventaId:venta.id
+  });
+  window.ultimaVenta = venta;
+  saveDB();
+  closeSheet('sheetCart');
+  mostrarRecibo(venta);
+  cart = [];
+  updateCartUI();
+  renderPOS();
+});
+
+function mostrarRecibo(v){
+  const fecha = new Date(v.fecha);
+  let itemsHTML = v.items.map(i=>`<div style="display:flex;justify-content:space-between;padding:3px 0;">
+    <span>${i.qty}x ${i.nombre}</span><span>${money(i.qty*i.precio)}</span>
+  </div>`).join('');
+  document.getElementById('reciboBox').innerHTML = `
+    <div style="font-family:'Fraunces';font-weight:800;font-size:1.05rem;">${DB.config.nombre||'Delicias de la Tía'}</div>
+    <div style="font-size:.72rem;color:var(--cafe-soft);margin-bottom:8px;">${fecha.toLocaleString('es-CO')}</div>
+    ${itemsHTML}
+    <div style="display:flex;justify-content:space-between;font-weight:800;border-top:1px dashed var(--crema-2);padding-top:8px;margin-top:8px;">
+      <span>Total</span><span>${money(v.total)}</span>
+    </div>`;
+  openSheet('sheetRecibo');
+}
+document.getElementById('btnCerrarRecibo').addEventListener('click', ()=>closeSheet('sheetRecibo'));
+document.getElementById('btnWhatsappRecibo').addEventListener('click', ()=>{
+  const v = window.ultimaVenta; if(!v) return;
+  let txt = `*${DB.config.nombre||'Delicias de la Tía'}*%0A${new Date(v.fecha).toLocaleString('es-CO')}%0A%0A`;
+  v.items.forEach(i=>{ txt += `${i.qty}x ${i.nombre} - ${encodeURIComponent(money(i.qty*i.precio))}%0A`; });
+  txt += `%0A*Total: ${encodeURIComponent(money(v.total))}*`;
+  const num = (DB.config.whatsapp||'').replace(/\D/g,'');
+  window.open(`https://wa.me/${num}?text=${txt}`, '_blank');
+});
+
+/* ---------- CAJA (contabilidad simple) ---------- */
+function renderCaja(){
+  const entradas = DB.movimientos.filter(m=>m.tipo==='entrada').reduce((a,m)=>a+m.monto,0);
+  const salidas = DB.movimientos.filter(m=>m.tipo==='salida').reduce((a,m)=>a+m.monto,0);
+  document.getElementById('kpiEntradas').textContent = money(entradas);
+  document.getElementById('kpiSalidas').textContent = money(salidas);
+  document.getElementById('kpiSaldo').textContent = money(entradas-salidas);
+
+  const list = [...DB.movimientos].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const box = document.getElementById('movList');
+  if(!list.length){
+    box.innerHTML = `<div class="empty-state"><div>🧾</div>Aún no hay movimientos registrados.</div>`;
+    return;
+  }
+  box.innerHTML = list.map(m=>`
+    <div class="mov-row">
+      <div>
+        <div class="mv-concepto">${m.concepto}</div>
+        <div class="mv-fecha">${new Date(m.fecha).toLocaleString('es-CO')}</div>
+      </div>
+      <div class="mv-monto" style="color:${m.tipo==='salida'?'var(--terracota)':'var(--oliva)'}">${m.tipo==='salida'?'-':'+'}${money(m.monto)}</div>
+    </div>`).join('');
+}
+
+let movTipoActivo = 'entrada';
+document.querySelectorAll('[data-movtipo]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('[data-movtipo]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    movTipoActivo = b.dataset.movtipo;
+  });
+});
+// Botón flotante de movimiento manual: se agrega dentro de la pestaña Caja
+const btnMovManual = document.createElement('button');
+btnMovManual.className = 'fab-add';
+btnMovManual.textContent = '+';
+btnMovManual.style.display = 'none';
+document.body.appendChild(btnMovManual);
+document.querySelectorAll('nav.tabbar button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    btnMovManual.style.display = btn.dataset.tab==='caja' ? 'flex':'none';
+  });
+});
+btnMovManual.addEventListener('click', ()=>{
+  document.getElementById('movTitulo').textContent = 'Nuevo movimiento';
+  document.getElementById('movConcepto').value='';
+  document.getElementById('movMonto').value='';
+  document.querySelectorAll('[data-movtipo]').forEach(x=>x.classList.remove('active'));
+  document.querySelector('[data-movtipo="entrada"]').classList.add('active');
+  movTipoActivo = 'entrada';
+  openSheet('sheetMov');
+});
+document.getElementById('btnGuardarMov').addEventListener('click', ()=>{
+  const concepto = document.getElementById('movConcepto').value.trim();
+  const monto = parseFloat(document.getElementById('movMonto').value);
+  if(!concepto || !monto){ showToast('Completa concepto y monto'); return; }
+  DB.movimientos.push({ id:uid(), tipo:movTipoActivo, concepto, monto, fecha:new Date().toISOString(), origen:'manual' });
+  saveDB(); closeSheet('sheetMov'); renderCaja();
+  showToast('Movimiento guardado');
+});
+
+/* ---------- REPORTE INVENTARIO ---------- */
+document.getElementById('btnReporteInv').addEventListener('click', ()=>{
+  if(!DB.insumos.length){ showToast('No hay insumos registrados'); return; }
+  let txt = `*Reporte de inventario - ${DB.config.nombre||'Delicias de la Tía'}*%0A${new Date().toLocaleDateString('es-CO')}%0A%0A`;
+  DB.insumos.forEach(i=>{
+    const bajo = i.stockMinimo>0 && i.stock<=i.stockMinimo;
+    txt += `${bajo?'⚠️ ':''}${i.nombre}: ${i.stock} ${i.unidad}${bajo?' (bajo)':''}%0A`;
+  });
+  const num = (DB.config.whatsapp||'').replace(/\D/g,'');
+  window.open(`https://wa.me/${num}?text=${txt}`, '_blank');
+});
+
+/* ---------- INIT ---------- */
+function renderAll(){
+  renderConfig();
+  renderPOS();
+  renderInventario();
+  renderCaja();
+  updateCartUI();
+}
+
+/* ---------- PWA: instalación y service worker ---------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('installBox').style.display = 'block';
+});
+document.getElementById('btnInstalar').addEventListener('click', async ()=>{
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('installBox').style.display = 'none';
+});
+window.addEventListener('appinstalled', ()=>{
+  document.getElementById('installBox').style.display = 'none';
+  showToast('¡App instalada!');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "Delicias de la Tía",
+  "short_name": "Delicias Tía",
+  "description": "Gestión de ventas, inventario y caja para Delicias de la Tía",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#8B3A3A",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

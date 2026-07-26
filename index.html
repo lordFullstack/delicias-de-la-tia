@@ -142,7 +142,13 @@
   .cart-row .ci-name{font-weight:800;font-size:.88rem;}
   .cart-row .ci-price{font-size:.76rem;color:var(--cafe-soft);}
   .qty-ctrl{display:flex;align-items:center;gap:8px;}
-  .qty-ctrl button{width:26px;height:26px;border-radius:8px;background:var(--crema-2);color:var(--vino);font-weight:800;}
+  .qty-ctrl button{width:26px;height:26px;border-radius:8px;background:var(--crema-2);color:var(--vino);font-weight:800;flex-shrink:0;}
+  .qty-ctrl .qty-input{
+    width:40px;text-align:center;border:2px solid var(--crema-2);border-radius:8px;
+    font-weight:800;color:var(--cafe);padding:4px 2px;font-size:.9rem;-moz-appearance:textfield;
+  }
+  .qty-ctrl .qty-input::-webkit-outer-spin-button, .qty-ctrl .qty-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .qty-ctrl .qty-input:focus{outline:none;border-color:var(--vino);}
 
   .btn{padding:13px 18px;border-radius:14px;font-weight:800;font-size:.92rem;width:100%;text-align:center;display:block;}
   .btn-primary{background:var(--vino);color:white;box-shadow:0 6px 14px rgba(139,58,58,.35);}
@@ -709,12 +715,22 @@ function updateCartUI(){
       </div>
       <div class="qty-ctrl">
         <button data-dec="${idx}">−</button>
-        <span>${c.qty}</span>
+        <input type="number" inputmode="numeric" min="1" class="qty-input" data-qty="${idx}" value="${c.qty}">
         <button data-inc="${idx}">+</button>
       </div>
     </div>`).join('');
   document.getElementById('cartTotal').textContent = money(cart.reduce((a,c)=>a+c.qty*c.precio,0));
   document.querySelectorAll('[data-inc]').forEach(b=>b.addEventListener('click', ()=>{ cart[b.dataset.inc].qty++; updateCartUI(); }));
+  document.querySelectorAll('[data-qty]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const idx = inp.dataset.qty;
+      let val = parseInt(inp.value);
+      if(!val || val<1) val = 1;
+      cart[idx].qty = val;
+      updateCartUI();
+    });
+    inp.addEventListener('focus', ()=>inp.select());
+  });
   document.querySelectorAll('[data-dec]').forEach(b=>b.addEventListener('click', ()=>{
     const idx = b.dataset.dec;
     cart[idx].qty--;
